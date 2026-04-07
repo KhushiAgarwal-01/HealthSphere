@@ -1,6 +1,7 @@
 class HealthChatbot {
     constructor() {
-        this.chatContainer = document.getElementById('chatMessages');
+        // this.chatContainer = document.getElementById('chatMessages');
+        this.chatContainer = document.getElementById('messageContainer');
         this.messageInput = document.getElementById('messageInput');
         this.fileInput = document.getElementById('fileInput');
         this.filePreview = document.getElementById('filePreview');
@@ -36,63 +37,141 @@ class HealthChatbot {
         });
     }
     
-    async sendMessage() {
-        const message = this.messageInput.value.trim();
+    // async sendMessage() {
+    //     const message = this.messageInput.value.trim();
         
-        if ((!message && !this.selectedFile) || this.isProcessing) {
-            return;
-        }
+    //     if ((!message && !this.selectedFile) || this.isProcessing) {
+    //         return;
+    //     }
         
-        this.isProcessing = true;
+    //     this.isProcessing = true;
         
-        // Hide welcome section
-        if (this.welcomeSection.style.display !== 'none') {
-            this.welcomeSection.style.display = 'none';
-        }
+    //     // Hide welcome section
+    //     if (this.welcomeSection.style.display !== 'none') {
+    //         this.welcomeSection.style.display = 'none';
+    //     }
         
-        // Add user message to chat
-        this.addMessage(message, 'user', this.selectedFile);
+    //     // Add user message to chat
+    //     this.addMessage(message, 'user', this.selectedFile);
         
-        // Clear input and file
-        this.messageInput.value = '';
-        this.clearFile();
+    //     // Clear input and file
+    //     this.messageInput.value = '';
+    //     this.clearFile();
         
-        // Show typing indicator
-        const typingId = this.showTypingIndicator();
+    //     // Show typing indicator
+    //     const typingId = this.showTypingIndicator();
         
-        try {
-            const formData = new FormData();
-            formData.append('message', message);
+    //     try {
+    //         const formData = new FormData();
+    //         formData.append('message', message);
             
-            if (this.selectedFile) {
-                formData.append('file', this.selectedFile);
-            }
+    //         if (this.selectedFile) {
+    //             formData.append('file', this.selectedFile);
+    //         }
             
-            const response = await fetch('/chatbot', {
-                method: 'POST',
-                body: formData
-            });
+    //         const response = await fetch('/chatbot', {
+    //             method: 'POST',
+    //             body: formData
+    //         });
             
-            const data = await response.json();
+    //         const data = await response.json();
             
-            // Remove typing indicator
-            this.removeTypingIndicator(typingId);
+    //         // Remove typing indicator
+    //         this.removeTypingIndicator(typingId);
             
-            // Add bot response
-            this.addMessage(data.response, 'bot', null, data.has_file);
+    //         // Add bot response
+    //         this.addMessage(data.response, 'bot', null, data.has_file);
             
-            // Auto-scroll to bottom
-            this.scrollToBottom();
+    //         // Auto-scroll to bottom
+    //         this.scrollToBottom();
             
-        } catch (error) {
-            this.removeTypingIndicator(typingId);
-            this.addMessage('Sorry, I encountered an error. Please try again.', 'bot', null, false, true);
-            console.error('Error:', error);
-        } finally {
-            this.isProcessing = false;
-        }
-    }
+    //     } catch (error) {
+    //         this.removeTypingIndicator(typingId);
+    //         this.addMessage('Sorry, I encountered an error. Please try again.', 'bot', null, false, true);
+    //         console.error('Error:', error);
+    //     } finally {
+    //         this.isProcessing = false;
+    //     }
+    // }
     
+
+    async sendMessage() {
+
+    const message = this.messageInput.value.trim();
+    const file = this.selectedFile;   // ⭐ save file first
+
+    if ((!message && !file) || this.isProcessing) {
+        return;
+    }
+
+    this.isProcessing = true;
+
+    if (this.welcomeSection.style.display !== 'none') {
+        this.welcomeSection.style.display = 'none';
+    }
+
+    // Add user message
+    this.addMessage(message, 'user', file);
+
+    // Clear input
+    this.messageInput.value = '';
+    this.clearFile();
+
+    const typingId = this.showTypingIndicator();
+
+    try {
+
+        const formData = new FormData();
+        formData.append('message', message);
+
+        if (file) {
+            formData.append('file', file);   // ⭐ use saved file
+        }
+
+        const response = await fetch('/chatbot', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        this.removeTypingIndicator(typingId);
+
+        this.addMessage(data.response, 'bot', null, data.has_file);
+
+        this.scrollToBottom();
+
+    } catch (error) {
+
+        this.removeTypingIndicator(typingId);
+
+        this.addMessage(
+            'Sorry, I encountered an error. Please try again.',
+            'bot',
+            null,
+            false,
+            true
+        );
+
+        console.error('Error:', error);
+
+    } finally {
+        this.isProcessing = false;
+    }
+}
+
+ toggleFileUpload() {
+
+    const uploadArea = document.getElementById("fileUploadArea");
+
+    if (uploadArea.style.display === "none" || uploadArea.style.display === "") {
+        uploadArea.style.display = "block";
+    } else {
+        uploadArea.style.display = "none";
+    }
+
+}
+
     addMessage(text, sender, file = null, hasFile = false, isError = false) {
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}-message ${isError ? 'error-message' : ''}`;

@@ -605,23 +605,24 @@
                 
                 <div class="quick-questions">
                     <p class="w-100 mb-2">Try asking:</p>
-                    <button class="quick-btn" onclick="askQuestion('What are common symptoms of diabetes?')">
+                    <button class="quick-btn" onclick="setQuickQuestion('What are common symptoms of diabetes?')">
                         Diabetes symptoms?
                     </button>
-                    <button class="quick-btn" onclick="askQuestion('How to lower blood pressure naturally?')">
+                    <button class="quick-btn" onclick="setQuickQuestion('How to lower blood pressure naturally?')">
                         Lower blood pressure?
                     </button>
-                    <button class="quick-btn" onclick="askQuestion('What is a healthy BMI range?')">
+                    <button class="quick-btn" onclick="setQuickQuestion('What is a healthy BMI range?')">
                         Healthy BMI?
                     </button>
-                    <button class="quick-btn" onclick="askQuestion('Tips for better sleep')">
+                    <button class="quick-btn" onclick="setQuickQuestion('Tips for better sleep')">
                         Better sleep tips
                     </button>
                 </div>
             </div>
             
             <!-- Chat Messages Container -->
-            <div class="message-container" id="messageContainer" style="display: none;">
+            <!-- <div class="message-container" id="messageContainer" style="display: none;"> -->
+                <div class="message-container" id="messageContainer"></div>
                 <!-- Messages will be added here dynamically -->
             </div>
             
@@ -633,13 +634,17 @@
                 <h5>Upload Medical Document</h5>
                 <p class="text-muted">Drag & drop or click to upload images or PDFs</p>
                 <p class="small text-muted mb-3">Supports: JPG, PNG, PDF (Max 10MB)</p>
-                <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" style="display: none;">
+                <!-- <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" style="display: none;"> -->
+                <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.pdf" style="display: none;" onchange="handleFileSelect(event)">
                 <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
                     <i class="fas fa-folder-open me-2"></i> Browse Files
                 </button>
                 
                 <div class="file-preview" id="filePreview">
+                <div id="previewContent"></div>
+            </div>
                     <div class="file-preview-item" id="filePreviewItem">
+                        
                         <i class="fas fa-file" id="fileIcon"></i>
                         <div style="flex: 1;">
                             <strong id="fileName"></strong>

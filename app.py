@@ -1,11 +1,11 @@
-from flask import Flask, render_template, request, flash, redirect, url_for, jsonify, send_file
+from flask import Flask, render_template, request, flash, redirect, url_for, jsonify, send_file, session
 from flask_cors import CORS  # Add this import
 import pickle
 import os
 import numpy as np
 from datetime import datetime
 import random
-import google.generativeai as genai
+# import google.generativeai as genai
 from werkzeug.utils import secure_filename
 import PyPDF2
 from PIL import Image
@@ -13,7 +13,9 @@ import io
 import base64
 import json
 from dotenv import load_dotenv
-from google import genai 
+from google import genai
+# import google.generativeai as genai 
+from ecg_predict import load_ecg_models, predict_ecg
 # Load environment variables
 load_dotenv()
 
@@ -71,6 +73,12 @@ except Exception as e:
     
     for model_name in ['diabetes', 'heart', 'kidney']:
         models[model_name] = DummyModel()
+
+try:
+    load_ecg_models()
+    print("✓ ECG models loaded successfully")
+except Exception as e:
+    print(f"✗ Error loading ECG models: {str(e)}")
 
 # Utility Functions
 def allowed_file(filename):
@@ -221,6 +229,45 @@ def get_gemini_response(user_message, file_path=None, file_type=None):
             return "⚠️ Model not found. Please use 'gemini-2.0-flash' or 'gemini-1.5-flash' instead."
         else:
             return f"⚠️ I'm experiencing difficulties connecting to the health information service. Error: {str(e)[:100]}"
+
+# ADDING NEW DIET RECOMMENDATION-----------------------------------------------------------
+def generate_diet_recommendation(age, cholesterol, bp, bmi, prediction):
+
+    if not gemini_client:
+        return "AI diet recommendation service unavailable."
+
+    try:
+        prompt = f"""
+        A patient has the following health information:
+
+        Age: {age}
+        Cholesterol Level: {cholesterol}
+        Blood Pressure: {bp}
+        BMI: {bmi}
+        Heart Disease Risk Prediction: {prediction}
+
+        Provide personalized heart-healthy diet recommendations.
+
+        Include:
+        - Foods to eat
+        - Foods to avoid
+        - Lifestyle suggestions
+
+        Keep the answer short with bullet points.
+        """
+
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+
+        return response.text
+
+    except Exception as e:
+        print("Diet AI error:", e)
+        return "Unable to generate personalized diet recommendation."
+
+
 # Health Advice Function
 def get_health_advice(disease, has_disease):
     advice = {
@@ -349,7 +396,33 @@ def chatbot_test():
                     addMessage('Error: ' + error.message, 'bot');
                 }
             }
-            
+
+            # async function sendMessage() {
+
+            #     const messageInput = document.getElementById("message");
+            #     const message = messageInput.value.trim();
+
+            #     if (!message) return;
+
+            #     const formData = new FormData();
+            #     formData.append("message", message);
+
+            #     try {
+
+            #         const response = await fetch("/chatbot", {
+            #             method: "POST",
+            #             body: formData
+            #         });
+
+            #         const data = await response.json();
+            #         addMessage(data.response, "bot");
+
+            #     } catch (error) {
+            #         addMessage("Error: " + error.message, "bot");
+            #     }
+
+            # }
+                        
             function addMessage(text, sender) {
                 const chat = document.getElementById('chat');
                 const div = document.createElement('div');
@@ -478,6 +551,67 @@ def chatbot():
             'type': 'error',
             'has_file': False
         }), 500
+
+
+
+# DIET RECOMMENDATION ROUTE----------------------
+
+@app.route('/diet', methods=['GET','POST'])
+def diet():
+
+    # Check if heart prediction data exists
+    heart_data = session.get("heart_data")
+
+    if heart_data:
+
+        diet_recommendation = generate_diet_recommendation(
+            heart_data["age"],
+            heart_data["cholesterol"],
+            heart_data["blood_pressure"],
+            heart_data["bmi"],
+            heart_data["prediction"]
+        )
+
+        return render_template(
+        "diet.html",
+        diet_recommendation=diet_recommendation,
+        show_result=True,
+        auto_generated=True,
+        age=heart_data["age"],
+        cholesterol=heart_data["cholesterol"],
+        blood_pressure=heart_data["blood_pressure"],
+        bmi=heart_data["bmi"]
+    )
+
+    # If user manually fills form
+    if request.method == "POST":
+
+        age = float(request.form.get('age'))
+        cholesterol = float(request.form.get('cholesterol'))
+        blood_pressure = float(request.form.get('blood_pressure'))
+        bmi = float(request.form.get('bmi'))
+
+        diet_recommendation = generate_diet_recommendation(
+            age,
+            cholesterol,
+            blood_pressure,
+            bmi,
+            "Unknown"
+        )
+        session.pop('heart_data', None)
+
+        return render_template(
+        "diet.html",
+        show_result=False,
+        age="",
+        cholesterol="",
+        blood_pressure="",
+        bmi=""
+    )
+
+    return render_template("diet.html", show_result=False)
+
+
 
 # ===================== DOCTOR FINDER API =====================
 
@@ -716,20 +850,49 @@ def heart():
             
             prediction = models['heart'].predict([user_input])
             result = "This person is predicted to have heart disease" if prediction[0] == 1 else "This person is predicted to not have heart disease"
-            
+            session['heart_data'] = {
+                "age": age,
+                "cholesterol": chol,
+                "blood_pressure": trestbps,
+                "bmi": 25,
+                "prediction": prediction[0]
+            }
             probability = models['heart'].predict_proba([user_input]) if hasattr(models['heart'], 'predict_proba') else [[0, 0]]
             confidence = round(np.max(probability) * 100, 2)
+
+
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            health_advice = get_health_advice("heart", prediction[0] == 1)
+
+            # NEW: Generate AI diet recommendation
+            diet_recommendation = generate_diet_recommendation(
+                age,
+                chol,
+                trestbps,
+                25,   # BMI placeholder (since heart dataset doesn't include BMI)
+                prediction[0]
+            )
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             health_advice = get_health_advice("heart", prediction[0] == 1)
             
+            # return render_template('heart.html', 
+            #                      result=result, 
+            #                      confidence=confidence,
+            #                      current_time=current_time,
+            #                      show_result=True,
+            #                      health_advice=health_advice,
+            #                      disease_type="heart")
+
             return render_template('heart.html', 
-                                 result=result, 
-                                 confidence=confidence,
-                                 current_time=current_time,
-                                 show_result=True,
-                                 health_advice=health_advice,
-                                 disease_type="heart")
+                     result=result, 
+                     confidence=confidence,
+                     current_time=current_time,
+                     show_result=True,
+                     health_advice=health_advice,
+                     diet_recommendation=diet_recommendation,
+                     disease_type="heart")
         
         except ValueError as ve:
             flash(f"Invalid input: {str(ve)}. Please enter numeric values.", 'danger')
@@ -739,6 +902,49 @@ def heart():
             return redirect(url_for('heart'))
     
     return render_template('heart.html', show_result=False)
+
+
+@app.route('/ecg', methods=['GET'])
+def ecg():
+    return render_template('ecg.html')
+
+
+@app.route('/predict-ecg', methods=['POST'])
+def predict_ecg_route():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'error': 'No image uploaded'}), 400
+
+        file = request.files['file']
+        if not file or not file.filename:
+            return jsonify({'error': 'No image selected'}), 400
+
+        ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+        if ext not in {'png', 'jpg', 'jpeg'}:
+            return jsonify({'error': 'Invalid file type. Use PNG, JPG or JPEG.'}), 400
+
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime("%Y%m%d%H%M%S%f")
+        stored_name = f"ecg_{timestamp}_{filename}"
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], stored_name)
+        file.save(file_path)
+
+        try:
+            prediction = predict_ecg(file_path)
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+        return jsonify({'prediction': prediction})
+
+    except Exception as e:
+        err = str(e)
+        if "Repo ECG model could not be loaded in this Python/sklearn environment" in err:
+            err = (
+                "Repo ECG model is selected, but it cannot be loaded in the current Python/sklearn version. "
+                "Please run this project in a repo-compatible environment (older sklearn) to use that model."
+            )
+        return jsonify({'error': f'Prediction failed: {err}'}), 500
 
 @app.route('/kidney', methods=['GET', 'POST'])
 def kidney():

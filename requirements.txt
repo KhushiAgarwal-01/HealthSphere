@@ -2,6 +2,11 @@ flask
 numpy
 pandas
 matplotlib
+Pillow
+scikit-learn
+scikit-image
+joblib
+tensorflow
 langchain
 openai
 fastapi

@@ -241,3 +241,11 @@ body {
         flex-wrap: wrap;
     }
 }
+
+.fa-paperclip{
+display:none !important;
+}
+
+.file-upload-btn{
+display:none !important;
+}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}AI Diet Recommendation{% endblock %}
+
+{% block content %}
+
+<div class="container mt-5">
+
+<h2 class="mb-4">AI Diet Recommendation</h2>
+
+{% if auto_generated %}
+<div class="alert alert-success">
+Diet recommendation generated automatically from your Heart Disease Prediction test.
+</div>
+{% endif %}
+
+<form method="POST">
+
+<div class="mb-3">
+<label class="form-label">Age</label>
+<input type="number"
+       name="age"
+       class="form-control"
+       value="{{ age }}"
+       placeholder="Enter Age"
+       required>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Cholesterol</label>
+<input type="number"
+       name="cholesterol"
+       class="form-control"
+       value="{{ cholesterol }}"
+       placeholder="Enter Cholesterol"
+       required>
+</div>
+
+<div class="mb-3">
+<label class="form-label">Blood Pressure</label>
+<input type="number"
+       name="blood_pressure"
+       class="form-control"
+       value="{{ blood_pressure }}"
+       placeholder="Enter Blood Pressure"
+       required>
+</div>
+
+<div class="mb-3">
+<label class="form-label">BMI</label>
+<input type="number"
+       step="0.1"
+       name="bmi"
+       class="form-control"
+       value="{{ bmi }}"
+       placeholder="Enter BMI"
+       required>
+</div>
+
+<button type="submit" class="btn btn-primary">
+Generate Diet Plan
+</button>
+
+</form>
+
+
+{% if show_result %}
+
+<div class="card mt-4">
+
+<div class="card-header bg-success text-white">
+AI Personalized Diet Recommendation
+</div>
+
+<div class="card-body">
+
+<pre style="white-space: pre-wrap;">{{ diet_recommendation }}</pre>
+
+</div>
+
+</div>
+
+{% endif %}
+
+</div>
+
+{% endblock %}

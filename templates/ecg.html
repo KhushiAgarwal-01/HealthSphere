@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}ECG Image Prediction{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-white">ECG Image Prediction</h6>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Upload an ECG image to get a class prediction from the trained ECG model pipeline.
+                </div>
+
+                <form id="ecgForm" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="ecgImage" class="form-label">ECG Image (PNG, JPG, JPEG)</label>
+                        <input class="form-control" type="file" id="ecgImage" name="file" accept=".png,.jpg,.jpeg" required>
+                    </div>
+
+                    <div class="d-grid d-md-flex justify-content-md-end gap-2">
+                        <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-heartbeat me-1"></i> Predict ECG
+                        </button>
+                    </div>
+                </form>
+
+                <div id="ecgResult" class="mt-4" style="display: none;">
+                    <div class="card border-left-danger">
+                        <div class="card-body">
+                            <h5 class="card-title">Prediction Result</h5>
+                            <p class="mb-0">Predicted class: <strong id="ecgPredictionText"></strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ecgError" class="alert alert-danger mt-4" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('ecgForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+
+    const resultBox = document.getElementById('ecgResult');
+    const errorBox = document.getElementById('ecgError');
+    const predictionText = document.getElementById('ecgPredictionText');
+    const formData = new FormData(this);
+
+    resultBox.style.display = 'none';
+    errorBox.style.display = 'none';
+
+    try {
+        const response = await fetch('/predict-ecg', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Prediction failed');
+        }
+
+        predictionText.textContent = data.prediction;
+        resultBox.style.display = 'block';
+    } catch (error) {
+        errorBox.textContent = error.message;
+        errorBox.style.display = 'block';
+    }
+});
+</script>
+{% endblock %}
