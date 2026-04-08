@@ -349,6 +349,21 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/about"><i class="fas fa-info-circle me-1"></i> About</a>
                     </li>
+                    {% if session.get('user_email') %}
+                    <li class="nav-item">
+                        <span class="nav-link"><i class="fas fa-user me-1"></i> {{ session.get('user_name', session.get('user_email')) }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout"><i class="fas fa-sign-out-alt me-1"></i> Logout</a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login"><i class="fas fa-sign-in-alt me-1"></i> Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/signup"><i class="fas fa-user-plus me-1"></i> Signup</a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

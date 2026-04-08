@@ -5,8 +5,10 @@ import os
 import numpy as np
 from datetime import datetime
 import random
+from functools import wraps
 # import google.generativeai as genai
 from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
 import PyPDF2
 from PIL import Image
 import io
@@ -14,6 +16,9 @@ import base64
 import json
 from dotenv import load_dotenv
 from google import genai
+from pymongo import MongoClient
+from pymongo.errors import PyMongoError
+from bson import ObjectId
 # import google.generativeai as genai 
 from ecg_predict import load_ecg_models, predict_ecg
 # Load environment variables
@@ -28,12 +33,40 @@ app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', './uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))  # 16MB
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'pdf', 'txt'}
 app.config['GEMINI_API_KEY'] = os.getenv('GEMINI_API_KEY')
+app.config['MONGO_URI'] = "mongodb+srv://Health:Khushi30@cluster0.k6wwto0.mongodb.net/HealthSphere?retryWrites=true&w=majority"
 
+app.config['MONGO_DB_NAME'] = "HealthSphere"
 # Create uploads directory if it doesn't exist
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Configure Gemini API
 CHATBOT_NAME = "HealthAI Assistant"
+
+# MongoDB setup
+mongo_client = None
+mongo_db = None
+users_collection = None
+diet_collection = None
+
+try:
+    mongo_client = MongoClient(
+        app.config['MONGO_URI'],
+        serverSelectionTimeoutMS=3000,
+        connectTimeoutMS=3000,
+        socketTimeoutMS=5000
+    )
+    mongo_client.admin.command('ping')
+    mongo_db = mongo_client[app.config['MONGO_DB_NAME']]
+    users_collection = mongo_db['users']
+    diet_collection = mongo_db['diet_recommendations']
+    users_collection.create_index("email", unique=True)
+    print("✓ MongoDB connected successfully")
+except Exception as e:
+    mongo_client = None
+    mongo_db = None
+    users_collection = None
+    diet_collection = None
+    print(f"✗ MongoDB connection failed: {str(e)}")
 
 # Initialize the client
 gemini_client = None
@@ -266,6 +299,98 @@ def generate_diet_recommendation(age, cholesterol, bp, bmi, prediction):
     except Exception as e:
         print("Diet AI error:", e)
         return "Unable to generate personalized diet recommendation."
+
+
+def generate_condition_diet_recommendation(condition, prediction, markers=None):
+    """Generate condition-specific diet recommendation for ECG/Kidney."""
+    if not gemini_client:
+        return "AI diet recommendation service unavailable."
+
+    markers = markers or {}
+
+    try:
+        prompt = f"""
+        A patient was assessed for {condition}.
+        Prediction result: {prediction}
+        Additional clinical markers: {markers}
+
+        Provide personalized and practical diet recommendations.
+        Include:
+        - Foods to prefer
+        - Foods to avoid
+        - Hydration advice
+        - Lifestyle support tips
+
+        Keep the answer short and in bullet points.
+        """
+
+        response = gemini_client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
+        return response.text
+    except Exception as e:
+        print("Condition diet AI error:", e)
+        return "Unable to generate personalized diet recommendation."
+
+
+def get_current_user():
+    user_id = session.get('user_id')
+    email = session.get('user_email')
+    if user_id and email:
+        return {"id": user_id, "email": email}
+    return None
+
+
+def login_required(view_func):
+    @wraps(view_func)
+    def wrapped(*args, **kwargs):
+        if not get_current_user():
+            flash("Please login to access your saved diet recommendations.", "warning")
+            return redirect(url_for('login'))
+        return view_func(*args, **kwargs)
+    return wrapped
+
+
+def save_diet_for_user(user_email, disease_type, prediction, recommendation, markers=None):
+    if diet_collection is None:
+        return
+    markers = markers or {}
+    try:
+        diet_collection.insert_one({
+            "email": user_email,
+            "disease_type": disease_type,
+            "prediction": str(prediction),
+            "recommendation": recommendation,
+            "markers": markers,
+            "created_at": datetime.utcnow()
+        })
+    except PyMongoError as e:
+        print(f"MongoDB save diet error: {str(e)}")
+
+    # Keep only latest 5 diets per user
+    try:
+        old_records = list(
+            diet_collection.find({"email": user_email})
+            .sort("created_at", -1)
+            .skip(5)
+        )
+        if old_records:
+            old_ids = [r["_id"] for r in old_records if "_id" in r]
+            if old_ids:
+                diet_collection.delete_many({"_id": {"$in": old_ids}})
+    except PyMongoError as e:
+        print(f"MongoDB cleanup diet history error: {str(e)}")
+
+
+def set_latest_diet_context(disease_type, prediction, recommendation, markers):
+    session["latest_diet_context"] = {
+        "disease_type": disease_type,
+        "prediction": str(prediction),
+        "recommendation": recommendation,
+        "markers": markers,
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
 
 
 # Health Advice Function
@@ -558,58 +683,68 @@ def chatbot():
 
 @app.route('/diet', methods=['GET','POST'])
 def diet():
+    user = get_current_user()
+    latest_context = session.get("latest_diet_context")
+    history_id = request.args.get("history_id", "").strip()
+    history = []
 
-    # Check if heart prediction data exists
-    heart_data = session.get("heart_data")
+    if user and diet_collection is not None:
+        try:
+            history = list(
+                diet_collection.find({"email": user["email"]}).sort("created_at", -1).limit(5)
+            )
+        except PyMongoError as e:
+            flash(f"Could not load diet history: {str(e)}", "danger")
+            history = []
 
-    if heart_data:
-
-        diet_recommendation = generate_diet_recommendation(
-            heart_data["age"],
-            heart_data["cholesterol"],
-            heart_data["blood_pressure"],
-            heart_data["bmi"],
-            heart_data["prediction"]
+    for record in history:
+        record["_id_str"] = str(record.get("_id"))
+        record["created_at_str"] = (
+            record.get("created_at").strftime("%Y-%m-%d %H:%M")
+            if record.get("created_at")
+            else ""
         )
 
-        return render_template(
+    if user and history_id and diet_collection is not None:
+        try:
+            selected = diet_collection.find_one(
+                {"_id": ObjectId(history_id), "email": user["email"]}
+            )
+            if selected:
+                latest_context = {
+                    "disease_type": selected.get("disease_type", ""),
+                    "prediction": selected.get("prediction", ""),
+                    "recommendation": selected.get("recommendation", ""),
+                    "markers": selected.get("markers", {}),
+                    "created_at": selected.get("created_at").strftime("%Y-%m-%d %H:%M:%S")
+                    if selected.get("created_at")
+                    else ""
+                }
+        except Exception:
+            flash("Selected history entry not found.", "warning")
+
+    if not latest_context and history:
+        latest = history[0]
+        latest_context = {
+            "disease_type": latest.get("disease_type", ""),
+            "prediction": latest.get("prediction", ""),
+            "recommendation": latest.get("recommendation", ""),
+            "markers": latest.get("markers", {}),
+            "created_at": latest.get("created_at_str", "")
+        }
+
+    if not latest_context:
+        if user:
+            flash("Run Heart, ECG, or Kidney test first to view diet recommendation.", "info")
+        return render_template("diet.html", show_result=False, diet_history=history, latest_context=None)
+
+    return render_template(
         "diet.html",
-        diet_recommendation=diet_recommendation,
         show_result=True,
         auto_generated=True,
-        age=heart_data["age"],
-        cholesterol=heart_data["cholesterol"],
-        blood_pressure=heart_data["blood_pressure"],
-        bmi=heart_data["bmi"]
+        latest_context=latest_context,
+        diet_history=history
     )
-
-    # If user manually fills form
-    if request.method == "POST":
-
-        age = float(request.form.get('age'))
-        cholesterol = float(request.form.get('cholesterol'))
-        blood_pressure = float(request.form.get('blood_pressure'))
-        bmi = float(request.form.get('bmi'))
-
-        diet_recommendation = generate_diet_recommendation(
-            age,
-            cholesterol,
-            blood_pressure,
-            bmi,
-            "Unknown"
-        )
-        session.pop('heart_data', None)
-
-        return render_template(
-        "diet.html",
-        show_result=False,
-        age="",
-        cholesterol="",
-        blood_pressure="",
-        bmi=""
-    )
-
-    return render_template("diet.html", show_result=False)
 
 
 
@@ -663,6 +798,84 @@ def nearby_doctors():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 # ===================== MAIN ROUTES =====================
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if not all([name, email, password, confirm_password]):
+            flash("Please fill all signup fields.", "warning")
+            return redirect(url_for('signup'))
+        if password != confirm_password:
+            flash("Password and confirm password do not match.", "warning")
+            return redirect(url_for('signup'))
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "warning")
+            return redirect(url_for('signup'))
+        if users_collection is None:
+            flash("Database is unavailable. Try again later.", "danger")
+            return redirect(url_for('signup'))
+        try:
+            if users_collection.find_one({"email": email}):
+                flash("This email is already registered. Please login.", "info")
+                return redirect(url_for('login'))
+
+            users_collection.insert_one({
+                "name": name,
+                "email": email,
+                "password": generate_password_hash(password),
+                "created_at": datetime.utcnow()
+            })
+        except PyMongoError as e:
+            flash(f"Signup failed due to database issue: {str(e)}", "danger")
+            return redirect(url_for('signup'))
+        flash("Signup successful. Please login.", "success")
+        return redirect(url_for('login'))
+
+    return render_template('signup.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+        if not all([email, password]):
+            flash("Please enter email and password.", "warning")
+            return redirect(url_for('login'))
+        if users_collection is None:
+            flash("Database is unavailable. Try again later.", "danger")
+            return redirect(url_for('login'))
+
+        try:
+            user = users_collection.find_one({"email": email})
+        except PyMongoError as e:
+            flash(f"Login failed due to database issue: {str(e)}", "danger")
+            return redirect(url_for('login'))
+        if not user or not check_password_hash(user.get("password", ""), password):
+            flash("Invalid email or password.", "danger")
+            return redirect(url_for('login'))
+
+        session['user_id'] = str(user.get('_id'))
+        session['user_email'] = user.get('email')
+        session['user_name'] = user.get('name', '')
+        flash("Logged in successfully.", "success")
+        return redirect(url_for('home'))
+
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    session.pop('user_email', None)
+    session.pop('user_name', None)
+    flash("You have been logged out.", "info")
+    return redirect(url_for('home'))
 
 @app.route('/')
 def home():
@@ -850,13 +1063,6 @@ def heart():
             
             prediction = models['heart'].predict([user_input])
             result = "This person is predicted to have heart disease" if prediction[0] == 1 else "This person is predicted to not have heart disease"
-            session['heart_data'] = {
-                "age": age,
-                "cholesterol": chol,
-                "blood_pressure": trestbps,
-                "bmi": 25,
-                "prediction": prediction[0]
-            }
             probability = models['heart'].predict_proba([user_input]) if hasattr(models['heart'], 'predict_proba') else [[0, 0]]
             confidence = round(np.max(probability) * 100, 2)
 
@@ -873,6 +1079,23 @@ def heart():
                 25,   # BMI placeholder (since heart dataset doesn't include BMI)
                 prediction[0]
             )
+            markers = {
+                "age": age,
+                "cholesterol": chol,
+                "blood_pressure": trestbps,
+                "max_heart_rate": thalach,
+                "oldpeak": oldpeak
+            }
+            set_latest_diet_context("heart", result, diet_recommendation, markers)
+            current_user = get_current_user()
+            if current_user:
+                save_diet_for_user(
+                    current_user["email"],
+                    "heart",
+                    result,
+                    diet_recommendation,
+                    markers
+                )
             
             current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             health_advice = get_health_advice("heart", prediction[0] == 1)
@@ -891,7 +1114,6 @@ def heart():
                      current_time=current_time,
                      show_result=True,
                      health_advice=health_advice,
-                     diet_recommendation=diet_recommendation,
                      disease_type="heart")
         
         except ValueError as ve:
@@ -934,8 +1156,30 @@ def predict_ecg_route():
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
+        diet_recommendation = generate_condition_diet_recommendation(
+            condition="ECG/Cardiovascular",
+            prediction=prediction,
+            markers={}
+        )
+        markers = {}
+        set_latest_diet_context("ecg", prediction, diet_recommendation, markers)
+        saved = False
+        current_user = get_current_user()
+        if current_user:
+            save_diet_for_user(
+                current_user["email"],
+                "ecg",
+                prediction,
+                diet_recommendation,
+                markers
+            )
+            saved = True
 
-        return jsonify({'prediction': prediction})
+        return jsonify({
+            'prediction': prediction,
+            'saved': saved,
+            'diet_url': url_for('diet')
+        })
 
     except Exception as e:
         err = str(e)
@@ -997,6 +1241,35 @@ def kidney():
             
             current_time = datetime.now().strftime("%Y-%m-d %H:%M:%S")
             health_advice = get_health_advice("kidney", prediction[0] == 1)
+            diet_recommendation = generate_condition_diet_recommendation(
+                condition="kidney disease",
+                prediction=result,
+                markers={
+                    "blood_pressure": blood_pressure,
+                    "blood_urea": blood_urea,
+                    "serum_creatinine": serum_creatinine,
+                    "sodium": sodium,
+                    "potassium": potassium
+                }
+            )
+            markers = {
+                "blood_pressure": blood_pressure,
+                "blood_urea": blood_urea,
+                "serum_creatinine": serum_creatinine,
+                "sodium": sodium,
+                "potassium": potassium
+            }
+            set_latest_diet_context("kidney", result, diet_recommendation, markers)
+            current_user = get_current_user()
+            if current_user:
+                save_diet_for_user(
+                    current_user["email"],
+                    "kidney",
+                    result,
+                    diet_recommendation,
+                    markers
+                )
+                flash("Kidney diet recommendation saved to your account.", "success")
             
             return render_template('kidney.html', 
                                 result=result, 

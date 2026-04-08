@@ -13,3 +13,4 @@ fastapi
 google-generativeai
 python-dotenv
 requests
+pymongo

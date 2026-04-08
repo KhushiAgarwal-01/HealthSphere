@@ -34,6 +34,11 @@
                         <div class="card-body">
                             <h5 class="card-title">Prediction Result</h5>
                             <p class="mb-0">Predicted class: <strong id="ecgPredictionText"></strong></p>
+                            <div class="mt-3">
+                                <a id="ecgDietButton" href="/diet" class="btn btn-danger">View Diet Recommendation</a>
+                                <a id="ecgDoctorButton" href="https://www.google.com/maps/search/cardiologist+near+me" target="_blank" class="btn btn-outline-primary ms-2">Find Nearby Doctors</a>
+                            </div>
+                            <p id="ecgSavedText" class="small text-muted mt-2 mb-0"></p>
                         </div>
                     </div>
                 </div>
@@ -53,6 +58,8 @@ document.getElementById('ecgForm').addEventListener('submit', async function (ev
     const resultBox = document.getElementById('ecgResult');
     const errorBox = document.getElementById('ecgError');
     const predictionText = document.getElementById('ecgPredictionText');
+    const dietBtn = document.getElementById('ecgDietButton');
+    const savedText = document.getElementById('ecgSavedText');
     const formData = new FormData(this);
 
     resultBox.style.display = 'none';
@@ -71,6 +78,10 @@ document.getElementById('ecgForm').addEventListener('submit', async function (ev
         }
 
         predictionText.textContent = data.prediction;
+        dietBtn.href = data.diet_url || '/diet';
+        savedText.textContent = data.saved
+            ? 'Saved to your account. Check Diet page for history.'
+            : 'Login to save this diet recommendation.';
         resultBox.style.display = 'block';
     } catch (error) {
         errorBox.textContent = error.message;

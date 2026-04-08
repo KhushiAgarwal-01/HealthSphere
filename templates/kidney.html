@@ -1,4 +1,4 @@
-<!-- {% extends "base.html" %}
+{% extends "base.html" %}
 
 {% block title %}Kidney Disease Prediction{% endblock %}
 
@@ -7,471 +7,89 @@
     .form-section {
         background: white;
         border-radius: 0.35rem;
-        padding: 2rem;
+        padding: 1.5rem;
         box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-        margin-bottom: 2rem;
     }
-    
-    .input-group-text {
-        background-color: var(--success-color);
-        color: white;
-        border: none;
-    }
-    
-    .info-icon {
-        color: var(--success-color);
-        cursor: pointer;
-        margin-left: 0.5rem;
-    }
-    
-    .parameter-group {
-        background-color: #f8f9fa;
-        border-radius: 0.35rem;
-        padding: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .parameter-group-title {
-        color: var(--success-color);
-        font-weight: 600;
-        margin-bottom: 1rem;
-        border-bottom: 1px solid #dee2e6;
-        padding-bottom: 0.5rem;
+    .group-title {
+        color: #198754;
+        font-weight: 700;
+        margin-top: 0.75rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 0.4rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="row animate-on-scroll">
-    <div class="col-lg-12">
+<div class="row justify-content-center">
+    <div class="col-lg-11">
         <div class="card mb-4">
-            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <div class="card-header py-3">
                 <h6 class="m-0 font-weight-bold text-white">Kidney Disease Risk Assessment</h6>
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    Please provide complete and accurate kidney function test results for the most reliable prediction.
+                    Enter kidney-related values for prediction. After prediction, use the diet button to view recommendation.
                 </div>
-                
+
                 {% if show_result %}
-                <div class="result-card card mb-4 animate__animated animate__fadeIn">
+                <div class="card mb-4 border-left-success">
                     <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-8">
-                                <h4 class="mb-3">Prediction Result</h4>
-                                <p class="lead">{{ result }}</p>
-                                <div class="progress mt-3 mb-2">
-                                    <div class="progress-bar bg-{{ 'danger' if 'has' in result else 'success' }}" 
-                                         role="progressbar" 
-                                         style="width: {{ confidence }}%" 
-                                         aria-valuenow="{{ confidence }}" 
-                                         aria-valuemin="0" 
-                                         aria-valuemax="100">
-                                    </div>
-                                </div>
-                                <p>Model confidence: {{ confidence }}%</p>
-                                <p class="text-muted small">Analysis performed on {{ current_time }}</p>
-                            </div>
-                            <div class="col-md-4 text-center">
-                                <i class="fas fa-{{ 'exclamation-triangle' if 'has' in result else 'check-circle' }} fa-5x text-{{ 'danger' if 'has' in result else 'success' }} mb-3"></i>
-                                <div>
-                                    <a href="/kidney" class="btn btn-outline-success">New Assessment</a>
-                                </div>
-                            </div>
-                        </div>
+                        <h5>Prediction Result</h5>
+                        <p class="lead">{{ result }}</p>
+                        <p class="mb-1">Model confidence: <strong>{{ confidence }}%</strong></p>
+                        <p class="text-muted small">Analysis performed on {{ current_time }}</p>
+                        <a href="/diet" class="btn btn-success">View Diet Recommendation</a>
+                        <a href="https://www.google.com/maps/search/nephrologist+near+me" target="_blank" class="btn btn-outline-primary ms-2">Find Nearby Doctors</a>
                     </div>
                 </div>
                 {% endif %}
-                
+
                 <div class="form-section">
-                    <form method="POST" action="/kidney" id="kidneyForm">
-                        <h5 class="mb-4 text-success">Patient Information</h5>
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="age" class="form-label">Age</label>
-                                    <div class="input-group">
-                                        <input type="number" class="form-control" id="age" name="age" min="1" max="120" required>
-                                        <span class="input-group-text">yrs</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="blood_pressure" class="form-label">Blood Pressure</label>
-                                    <div class="input-group">
-                                        <input type="number" step="0.1" class="form-control" id="blood_pressure" name="blood_pressure" min="0" required>
-                                        <span class="input-group-text">mm Hg</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="parameter-group">
-                            <h6 class="parameter-group-title">
-                                <i class="fas fa-flask me-2"></i> Urine Tests
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="specific_gravity" class="form-label">
-                                            Specific Gravity 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Concentration of particles in urine"></i>
-                                        </label>
-                                        <input type="number" step="0.01" class="form-control" id="specific_gravity" name="specific_gravity" min="0" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="albumin" class="form-label">
-                                            Albumin 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Amount of albumin in urine (g/dL)"></i>
-                                        </label>
-                                        <input type="number" step="0.1" class="form-control" id="albumin" name="albumin" min="0" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="sugar" class="form-label">
-                                            Sugar 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Amount of sugar in urine (mg/dL)"></i>
-                                        </label>
-                                        <input type="number" step="0.1" class="form-control" id="sugar" name="sugar" min="0" required>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="red_blood_cells" class="form-label">
-                                            Red Blood Cells 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Presence of red blood cells in urine"></i>
-                                        </label>
-                                        <select class="form-select" id="red_blood_cells" name="red_blood_cells" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">Normal</option>
-                                            <option value="1">Abnormal</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="pus_cell" class="form-label">
-                                            Pus Cell 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Presence of pus cells in urine"></i>
-                                        </label>
-                                        <select class="form-select" id="pus_cell" name="pus_cell" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">Normal</option>
-                                            <option value="1">Abnormal</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="pus_cell_clumps" class="form-label">
-                                            Pus Cell Clumps 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Presence of pus cell clumps in urine"></i>
-                                        </label>
-                                        <select class="form-select" id="pus_cell_clumps" name="pus_cell_clumps" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">Not present</option>
-                                            <option value="1">Present</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="bacteria" class="form-label">
-                                            Bacteria 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Presence of bacteria in urine"></i>
-                                        </label>
-                                        <select class="form-select" id="bacteria" name="bacteria" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">Not present</option>
-                                            <option value="1">Present</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="parameter-group">
-                            <h6 class="parameter-group-title">
-                                <i class="fas fa-tint me-2"></i> Blood Tests
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="blood_glucose_random" class="form-label">
-                                            Blood Glucose Random 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Random blood glucose level (mg/dL)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="blood_glucose_random" name="blood_glucose_random" min="0" required>
-                                            <span class="input-group-text">mg/dL</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="blood_urea" class="form-label">
-                                            Blood Urea 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Blood urea nitrogen level (mg/dL)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="blood_urea" name="blood_urea" min="0" required>
-                                            <span class="input-group-text">mg/dL</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="serum_creatinine" class="form-label">
-                                            Serum Creatinine 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Serum creatinine level (mg/dL)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="serum_creatinine" name="serum_creatinine" min="0" required>
-                                            <span class="input-group-text">mg/dL</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="sodium" class="form-label">
-                                            Sodium 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Serum sodium level (mEq/L)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="sodium" name="sodium" min="0" required>
-                                            <span class="input-group-text">mEq/L</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="potassium" class="form-label">
-                                            Potassium 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Serum potassium level (mEq/L)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="potassium" name="potassium" min="0" required>
-                                            <span class="input-group-text">mEq/L</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="haemoglobin" class="form-label">
-                                            Hemoglobin 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Hemoglobin level (g/dL)"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="haemoglobin" name="haemoglobin" min="0" required>
-                                            <span class="input-group-text">g/dL</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="packed_cell_volume" class="form-label">
-                                            Packed Cell Volume 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Packed cell volume percentage"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="packed_cell_volume" name="packed_cell_volume" min="0" required>
-                                            <span class="input-group-text">%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="white_blood_cell_count" class="form-label">
-                                            White Blood Cell Count 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="White blood cells per cubic mm"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="white_blood_cell_count" name="white_blood_cell_count" min="0" required>
-                                            <span class="input-group-text">cells/cumm</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="red_blood_cell_count" class="form-label">
-                                            Red Blood Cell Count 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Red blood cells per cubic mm"></i>
-                                        </label>
-                                        <div class="input-group">
-                                            <input type="number" step="0.1" class="form-control" id="red_blood_cell_count" name="red_blood_cell_count" min="0" required>
-                                            <span class="input-group-text">cells/cumm</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="parameter-group">
-                            <h6 class="parameter-group-title">
-                                <i class="fas fa-user-md me-2"></i> Medical History
-                            </h6>
-                            <div class="row">
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="hypertension" class="form-label">
-                                            Hypertension 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="History of high blood pressure"></i>
-                                        </label>
-                                        <select class="form-select" id="hypertension" name="hypertension" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">No</option>
-                                            <option value="1">Yes</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="diabetes_mellitus" class="form-label">
-                                            Diabetes Mellitus 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="History of diabetes"></i>
-                                        </label>
-                                        <select class="form-select" id="diabetes_mellitus" name="diabetes_mellitus" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">No</option>
-                                            <option value="1">Yes</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="coronary_artery_disease" class="form-label">
-                                            Coronary Artery Disease 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="History of coronary artery disease"></i>
-                                        </label>
-                                        <select class="form-select" id="coronary_artery_disease" name="coronary_artery_disease" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">No</option>
-                                            <option value="1">Yes</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="mb-3">
-                                        <label for="appetite" class="form-label">
-                                            Appetite 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Current appetite status"></i>
-                                        </label>
-                                        <select class="form-select" id="appetite" name="appetite" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">Poor</option>
-                                            <option value="1">Good</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="peda_edema" class="form-label">
-                                            Pedal Edema 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Swelling in feet/ankles"></i>
-                                        </label>
-                                        <select class="form-select" id="peda_edema" name="peda_edema" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">No</option>
-                                            <option value="1">Yes</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="mb-3">
-                                        <label for="aanemia" class="form-label">
-                                            Anemia 
-                                            <i class="fas fa-info-circle info-icon" data-bs-toggle="tooltip" title="Presence of anemia"></i>
-                                        </label>
-                                        <select class="form-select" id="aanemia" name="aanemia" required>
-                                            <option value="" selected disabled>Select option</option>
-                                            <option value="0">No</option>
-                                            <option value="1">Yes</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
-                            <button type="reset" class="btn btn-outline-secondary me-md-2">Reset</button>
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-kidneys me-1"></i> Assess Kidney Health
-                            </button>
-                        </div>
-                    </form>
-                </div>
-                
-                <div class="card border-left-success mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title text-success">
-                            <i class="fas fa-info-circle me-2"></i> Understanding Kidney Disease Risk
-                        </h5>
-                        <p class="card-text">
-                            Our kidney disease prediction model evaluates multiple kidney function parameters to assess your risk. 
-                            A positive result suggests potential kidney issues that should be evaluated by a nephrologist. 
-                            Early detection of kidney problems can significantly improve treatment outcomes.
-                        </p>
-                        <a href="#" class="btn btn-outline-success btn-sm">Learn about kidney health</a>
+                <form method="POST" action="/kidney">
+                    <div class="group-title">Core Inputs</div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Age</label><input class="form-control" name="age" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Blood Pressure</label><input class="form-control" name="blood_pressure" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Specific Gravity</label><input class="form-control" name="specific_gravity" type="number" step="0.01" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Albumin</label><input class="form-control" name="albumin" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Sugar</label><input class="form-control" name="sugar" type="number" required></div>
                     </div>
+                    <div class="group-title">Urine and Blood Markers</div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Red Blood Cells (0/1)</label><input class="form-control" name="red_blood_cells" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Pus Cell (0/1)</label><input class="form-control" name="pus_cell" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Pus Cell Clumps (0/1)</label><input class="form-control" name="pus_cell_clumps" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Bacteria (0/1)</label><input class="form-control" name="bacteria" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Blood Glucose Random</label><input class="form-control" name="blood_glucose_random" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Blood Urea</label><input class="form-control" name="blood_urea" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Serum Creatinine</label><input class="form-control" name="serum_creatinine" type="number" step="0.1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Sodium</label><input class="form-control" name="sodium" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Potassium</label><input class="form-control" name="potassium" type="number" step="0.1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Haemoglobin</label><input class="form-control" name="haemoglobin" type="number" step="0.1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Packed Cell Volume</label><input class="form-control" name="packed_cell_volume" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">WBC Count</label><input class="form-control" name="white_blood_cell_count" type="number" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">RBC Count</label><input class="form-control" name="red_blood_cell_count" type="number" required></div>
+                    </div>
+                    <div class="group-title">Medical History Flags</div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label">Hypertension (0/1)</label><input class="form-control" name="hypertension" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Diabetes Mellitus (0/1)</label><input class="form-control" name="diabetes_mellitus" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Coronary Artery Disease (0/1)</label><input class="form-control" name="coronary_artery_disease" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Appetite (0/1)</label><input class="form-control" name="appetite" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Peda Edema (0/1)</label><input class="form-control" name="peda_edema" type="number" min="0" max="1" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Anemia (0/1)</label><input class="form-control" name="aanemia" type="number" min="0" max="1" required></div>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="reset" class="btn btn-outline-secondary">Reset</button>
+                        <button type="submit" class="btn btn-success">Assess Kidney Health</button>
+                    </div>
+                </form>
                 </div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
-
-{% block extra_js %}
-<script>
-    $(document).ready(function() {
-        // Initialize tooltips
-        $('[data-bs-toggle="tooltip"]').tooltip();
-        
-        // Form validation
-        $('#kidneyForm').on('submit', function() {
-            let isValid = true;
-            $(this).find('select[required]').each(function() {
-                if (!$(this).val()) {
-                    isValid = false;
-                    $(this).addClass('is-invalid');
-                } else {
-                    $(this).removeClass('is-invalid');
-                }
-            });
-            
-            $(this).find('input[required]').each(function() {
-                if (!$(this).val()) {
-                    isValid = false;
-                    $(this).addClass('is-invalid');
-                } else {
-                    $(this).removeClass('is-invalid');
-                }
-            });
-            
-            if (!isValid) {
-                $('html, body').animate({
-                    scrollTop: $('.is-invalid').first().offset().top - 100
-                }, 500);
-                return false;
-            }
-            return true;
-        });
-    });
-</script>
-{% endblock %} -->
