@@ -1,14 +1,5 @@
 ## **AmarCare- AI-Powered Health Assistant**
  # HealthPredict Pro is an intelligent healthcare platform that combines machine learning disease prediction with Gemini AI-powered medical assistance. The system helps users assess their risk for diabetes, heart disease, and kidney disease while providing instant health information through an AI chatbot.
- <https://img.shields.io/badge/AmarCare-brightgreen>
-
-## App Demo
-
-<img width="1897" height="972" alt="image" src="https://github.com/user-attachments/assets/bcfd0932-3339-4755-9430-107aeabfb873" />
-<img width="1742" height="926" alt="image" src="https://github.com/user-attachments/assets/08711bd0-3dbe-468a-8331-28f72e66d662" />
-<img width="1740" height="947" alt="image" src="https://github.com/user-attachments/assets/71b2de44-bb11-4b2c-a13e-84d689d65d40" />
-<img width="1728" height="946" alt="image" src="https://github.com/user-attachments/assets/128d2982-1bcd-42e5-9c2d-7e1c5d96e2f9" />
-
 
 
 
@@ -28,7 +19,7 @@
 
 HealthPredict Pro is an advanced healthcare application that combines machine learning disease prediction with Gemini AI-powered health assistance. The system provides:
 
-- Disease Risk Assessment for Diabetes, Heart Disease, and Kidney Disease
+- Disease Risk Assessment for Heart Disease, and Kidney Disease
 - AI Health Chatbot with multimodal support (text, images, PDFs)
 - Nearby Doctor Finder with geolocation
 - Personalized Health Advice based on prediction results
@@ -43,21 +34,10 @@ HealthPredict Pro is an advanced healthcare application that combines machine le
 
 ## ✨ Features
 
-#🔬 Disease Prediction
-
-- Diabetes Prediction: Uses PIMA Indian Diabetes Dataset
-- Heart Disease Prediction: Based on Cleveland Heart Disease Dataset
-- Kidney Disease Prediction: Chronic Kidney Disease Dataset
-- Confidence Scores: Display prediction reliability percentages
-- Health Recommendations: Personalized advice based on results
 
 # 🤖 AI Health Assistant
 
 - Gemini AI Integration: Google's advanced AI model
-- Multimodal Support: Text, images, and PDF analysis
-- Medical Document Analysis: Lab reports, prescriptions explanation
-- Real-time Responses: Instant health information
-- Context-aware: Maintains conversation history
 
 # 📍 Smart Doctor Finder
 
@@ -73,7 +53,7 @@ HealthPredict Pro is an advanced healthcare application that combines machine le
 - Pop-up Chatbot: Accessible from any page
 - Interactive Forms: User-friendly input interface
 - Visual Feedback: Animations and loading indicators
-- Dark/Light Mode: Comfortable viewing options
+
 
 
 ## 🏗️ System Architecture
@@ -86,7 +66,7 @@ graph TB
     B --> D[AI Chatbot]
     B --> E[Health Resources]
     
-    C --> C1[Diabetes Check]
+
     C --> C2[Heart Check]
     C --> C3[Kidney Check]
     
@@ -189,7 +169,6 @@ flask-cors==4.0.0
 Model Specifications:
 
 Disease	Algorithm	| Accuracy          |	Dataset	Features
-Diabetes	        |     Random Forest	|     85%	PIMA Indian	8 Features + engineered
 Heart Disease	    | SVM	            |     87%	Cleveland	13 Clinical Parameters
 Kidney Disease	    | Gradient Boosting |	  90%	CKD Dataset	24 Medical Attributes
 
@@ -200,7 +179,6 @@ healthpredict-pro/
 ├── 📁 templates/           # HTML Templates
 │   ├── base.html          # Main template
 │   ├── home.html          # Home page
-│   ├── diabetes.html      # Diabetes prediction
 │   ├── heart.html         # Heart disease prediction
 │   ├── kidney.html        # Kidney disease prediction
 │   ├── about.html         # About page
@@ -216,7 +194,6 @@ healthpredict-pro/
 │   └── 📁 images/        # Image assets
 │
 ├── 📁 saved_models/       # ML Models
-│   ├── diabetes.pkl      # Diabetes prediction model
 │   ├── heart.pkl         # Heart disease model
 │   └── kidney.pkl        # Kidney disease model
 │
@@ -230,26 +207,6 @@ healthpredict-pro/
 ├── .gitignore         # Git ignore file
 ├── README.md          # This file
 └── LICENSE            # MIT License
-
-```
-## 📄 License
-```
-MIT License
-
-Copyright (c) 2025 AmarCare
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-```
-## 📞 Contact & Support
-islamoahodil12@gmail.com
 
 <div align="center">
 🌟 Made with ❤️ for Better Healthcare
